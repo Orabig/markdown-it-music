@@ -8,7 +8,12 @@ Artist.NOLOGO = true;
 
 function renderVextab(str, opts) {
   // Parse the VexTab music notation
-  const artist = new Artist(MARGIN_LEFT, 0, opts.maxWidth - MARGIN_RIGHT);
+  if (isNaN(opts.maxWidth)) {
+    width = 800;
+  } else {
+    width = opts.maxWidth - MARGIN_RIGHT
+  }
+  const artist = new Artist(MARGIN_LEFT, 0, width);
   const vextab = new VexTab(artist);
   vextab.parse(str);
 
