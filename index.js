@@ -3,6 +3,7 @@ const meta = require("markdown-it-meta");
 const markdownitfence = require("markdown-it-fence");
 const abc = require("./renderers/abc_renderer.js");
 const vextab = require("./renderers/vextab_renderer.js");
+const vexflow = require("./renderers/vexflow_renderer.js");
 const ChordsRenderer = require("./renderers/chords_renderer.js");
 const { parseVerse, isVoiceLine } = require("./parsers/verse");
 
@@ -51,6 +52,7 @@ function MarkdownMusic(md) {
 
   md.rendererRegistry[abc.lang] = abc.callback;
   md.rendererRegistry[vextab.lang] = vextab.callback;
+  md.rendererRegistry[vexflow.lang] = vexflow.callback;
 
   // Renderer configuration functions
   md.setTranspose = function (transpose) {
