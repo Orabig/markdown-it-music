@@ -1,5 +1,5 @@
 "use strict";
-const voicePattern = /^([a-zA-Z-_]+)([0-9]*):\s(.*)/;
+const barPattern = /^([a-zA-Z-_]+)([0-9]*):\s(.*)/;
 const emptyLine = /^[ \t]*\n?$/;
 
 function parseNotes(lines,opts,indent) {
@@ -13,7 +13,7 @@ function parseNotes(lines,opts,indent) {
     return def;
 }
 
-function parseVoice(lines,opts,indent) {
+function parsebar(lines,opts,indent) {
     var def={blocs:[],options:opts};
     const re = new RegExp("^ {" + indent + "}(tuplet|beam|notes( *= *.*)?)(( +\\w+=\\w+)*)");
     while (lines.length>0) {
@@ -26,12 +26,12 @@ function parseVoice(lines,opts,indent) {
 }
 
 function parseStave(lines,opts,indent) {
-    var def={voices:[],options:opts};
-    const re = new RegExp("^ {" + indent + "}(voice|notes( *= *.*)?)(( +\\w+=\\w+)*)");
+    var def={bars:[],options:opts};
+    const re = new RegExp("^ {" + indent + "}(bar|notes( *= *.*)?)(( +\\w+=\\w+)*)");
     while (lines.length>0) {
         var parsed = parseOneLine(lines,re);
-        if (parsed.verb=='voice') {
-            def.voices.push(parseVoice(parsed.block,parsed.options,parsed.indent))
+        if (parsed.verb=='bar') {
+            def.bars.push(parsebar(parsed.block,parsed.options,parsed.indent))
         }
     }
     return def;

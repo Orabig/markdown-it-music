@@ -8,7 +8,7 @@ describe("Vexflow Parser", () => {
         const expectedDefinition = {
             staves:[
                 {
-                    voices:[
+                    bars:[
                         {
                             blocs: [
                               { type: 'notes', values: 'a, b, c' }
@@ -21,7 +21,7 @@ describe("Vexflow Parser", () => {
     
         const text = `
           stave
-              voice
+              bar
                   notes
                       a, b, c`;
         const actualDefinition = parser.parseVex(text);
@@ -33,7 +33,7 @@ describe("Vexflow Parser", () => {
       test("should parse more definitions", () => {
         const expectedDefinition = {
             staves:[
-                {  voices:[
+                {  bars:[
                     {  blocs: [
                             { type: 'notes', values: 'a, b' },
                             { type: 'notes', values: 'a, b' }
@@ -50,14 +50,14 @@ describe("Vexflow Parser", () => {
     
         const text = `
           stave
-              voice
+              bar
                 notes
                     a
                     , b
                 notes
                     a
                     , b
-              voice
+              bar
                   notes
                       a
                       , b
