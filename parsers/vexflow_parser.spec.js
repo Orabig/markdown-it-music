@@ -20,7 +20,7 @@ describe("Vexflow Parser", () => {
         };
     
         const text = `
-          stave
+          staff
               bar
                   notes
                       a, b, c`;
@@ -49,7 +49,7 @@ describe("Vexflow Parser", () => {
         ]};
     
         const text = `
-          stave
+        staff
               bar
                 notes
                     a

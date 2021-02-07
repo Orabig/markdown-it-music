@@ -25,7 +25,7 @@ function parsebar(lines,opts,indent) {
     return def;
 }
 
-function parseStave(lines,opts,indent) {
+function parseStaff(lines,opts,indent) {
     var def={bars:[],options:opts};
     const re = new RegExp("^ {" + indent + "}(bar|notes( *= *.*)?)(( +\\w+=\\w+)*)");
     while (lines.length>0) {
@@ -44,11 +44,11 @@ function parseStave(lines,opts,indent) {
  */
 function parseDefinition(lines, indent) {
     var def = {staves:[]};
-    const re = new RegExp("^ {" + indent + "}(stave|options?)(( +\\w+=\\w+)*)");
+    const re = new RegExp("^ {" + indent + "}(staff|options?)(( +\\w+=\\w+)*)");
     while (lines.length>0) {
         var parsed = parseOneLine(lines,re);
-        if (parsed.verb=='stave') {
-            def.staves.push(parseStave(parsed.block,parsed.options,parsed.indent))
+        if (parsed.verb=='staff') {
+            def.staves.push(parseStaff(parsed.block,parsed.options,parsed.indent))
         }
     }
     return def;
