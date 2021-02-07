@@ -12,20 +12,33 @@ function err(str) {
 function rendervexflow(str, opts) {
   // Parse the vexflow music notation
   var parsed = VexParser.parseVex(str);
-  const svgContainer = document.createElement("div");
-  var systemWidth = 600;
-  var options = { renderer: {elementId: svgContainer, width: systemWidth+100, height: 900} }
   if (str.includes("bach")) {
+    const svgContainer = document.createElement("div");
+    var systemWidth = 600;
+    var options = { renderer: {elementId: svgContainer, width: systemWidth+100, height: 900} }
     bachSample(options);
     return svgContainer.outerHTML;
   }
-
+  const div = document.createElement("div");
+  var systemWidth = 800;
+  var options = { renderer: {elementId: div, width: systemWidth+100, height: 220} }
+  //var renderer = new VF.Renderer(div, VF.Renderer.Backends.SVG);
+  //renderer.resize(systemWidth+100, 100);
+  //var options = { renderer: renderer};
   var registry = new VF.Registry();
   function id(id) { return registry.getElementById(id); }
 
   VF.Registry.enableDefaultRegistry(registry);
   var vf = new VF.Factory(options);
   var score = vf.EasyScore({ throwOnError: true });
+  
+
+  
+  /*Bravura: [VF.Fonts.Bravura, VF.Fonts.Gonville, VF.Fonts.Custom],
+  Gonville: [VF.Fonts.Gonville, VF.Fonts.Bravura, VF.Fonts.Custom],
+  Petaluma: [VF.Fonts.Petaluma, VF.Fonts.Gonville, VF.Fonts.Custom],
+*/
+  VF.DEFAULT_FONT_STACK = [VF.Fonts.Petaluma, VF.Fonts.Gonville, VF.Fonts.Custom];
 
   var voice = score.voice.bind(score);
   var notes = score.notes.bind(score);
@@ -33,7 +46,7 @@ function rendervexflow(str, opts) {
   var tuplet = score.tuplet.bind(score);
 
   var x = 20; // Place pour l'accolade ?
-  var y = 80;
+  var y = 0;
   function makeSystem(width) {
     var system = vf.System({ x: x, y: y, width: width, spaceBetweenStaves: 10 });
     x += width;
@@ -45,6 +58,9 @@ function rendervexflow(str, opts) {
   parsed.staves[0].options.clef='treble';
   if (parsed.staves[1])
     parsed.staves[1].options.clef='bass';
+  
+  var beams = [];
+  var automaticBeam = true;
 
   // TODO : verifier qu'il y a le MEME nombre de bars par staff
   var barCount = parsed.staves[0].bars.length;
@@ -53,18 +69,27 @@ function rendervexflow(str, opts) {
     var system = makeSystem(barWidth);
     parsed.staves.forEach(staff => {
       var clef = staff.options.clef;
-      var newStave = system.addStave({
-        voices: [
-          voice(
-            staff.bars[bar].blocs.map( bloc=> {
-                if (bloc.type=='notes') {
-                  var options = {clef: clef};
-                  return notes(bloc.values, options);
-                }
-            }).reduce(concat)
-          )
-        ],
+      var voices = [
+        voice(
+          staff.bars[bar].blocs.map( bloc=> {
+              if (bloc.type=='notes') {
+                var options = {clef: clef};
+                return notes(bloc.values, options);
+              }
+          }).reduce(concat)
+        )
+      ].map(voice => { // Map voices to plugin generateBeams
+        if (automaticBeam) {
+          var be = VF.Beam.generateBeams(voice.getTickables(), {});
+          beams = beams.concat(be);
+        }
+        return voice;
       });
+
+      var newStave = system.addStave({
+        voices: voices,
+      });
+
       if (bar==0) {
         newStave.addClef(staff.options.clef);
         newStave.addTimeSignature('4/4');
@@ -77,17 +102,30 @@ function rendervexflow(str, opts) {
         .addKeySignature('G')
         .addTimeSignature('3/4')
         .setTempo({ name: 'Allegretto', duration: 'h', dots: 1, bpm: 66}, -30);*/
+      /*
+      vf.Formatter()
+      .joinVoices(voices)
+      .formatToStave(voices, newStave);*/
+
     });
     if (bar==0) {
       system.addConnector('brace');
       system.addConnector('singleLeft');
     }
+    
   }
   system.addConnector('singleRight');
   
   vf.draw();
+
+  if (automaticBeam) {
+    beams.forEach(function(beam) {
+      return beam.setContext(vf.getContext()).draw();
+    });
+  }
+
   VF.Registry.disableDefaultRegistry();
-  return svgContainer.outerHTML;
+  return div.outerHTML;
 }
 
 // Source : https://github.com/0xfe/vexflow/blob/master/tests/bach_tests.js
