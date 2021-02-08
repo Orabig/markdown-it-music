@@ -43,12 +43,15 @@ function parseStaff(lines,opts,indent) {
  * @param {*} indent 
  */
 function parseDefinition(lines, indent) {
-    var def = {staves:[]};
-    const re = new RegExp("^ {" + indent + "}(staff|options?)(( +\\w+=\\w+)*)");
+    var def = {options:{},staves:[]};
+    const re = new RegExp("^ {" + indent + "}(staff|options)(( +\\w+=\\S+)*)");
     while (lines.length>0) {
         var parsed = parseOneLine(lines,re);
         if (parsed.verb=='staff') {
             def.staves.push(parseStaff(parsed.block,parsed.options,parsed.indent))
+        }
+        if (parsed.verb=='options') {
+            def.options = parsed.options;
         }
     }
     return def;
@@ -79,7 +82,15 @@ function getLinesBelowIndent(lines,indent) {
  * @param {String} line 
  */
 function parseOptions(line) {
-    return {};
+    const re = /(\w+)=(\S+)/g;
+    var options = {};
+    var match;
+    while (match = re.exec(line)) {
+        var key = match[1];
+        var val = match[2];
+        options[key]=val;
+    }
+    return options;
 }
 
 /**
