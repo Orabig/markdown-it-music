@@ -125,10 +125,10 @@ function rendervexflow(str, opts) {
       system.addConnector('singleLeft');
     }
 
-    c1 = vf.ChordSymbol({vJustify:'top',fontFamily:'petalumaScript,Arial'}).addText('C').addTextSuperscript('7');
-    c2 = vf.ChordSymbol({vJustify:'top',fontFamily:'petalumaScript,Arial'}).addText('F').addTextSuperscript('7');
-    c3 = vf.ChordSymbol({vJustify:'top',fontFamily:'petalumaScript,Arial'}).addText('C').addTextSuperscript('7');
-    c4 = vf.ChordSymbol({vJustify:'top',fontFamily:'petalumaScript,Arial'}).addText('C').addGlyphOrText('7(b9)', { symbolModifier: VF.ChordSymbol.symbolModifiers.SUPERSCRIPT });
+    c1 = vf.ChordSymbol({vJustify:'top',fontFamily:'Roboto Slab,Times'}).addText('C').addTextSuperscript('7');
+    c2 = vf.ChordSymbol({vJustify:'top',fontFamily:'PetalumaScript,Arial'}).addText('F').addTextSuperscript('7');
+    c3 = vf.ChordSymbol({vJustify:'top',fontFamily:'PetalumaScript,Arial'}).addText('C').addTextSuperscript('7');
+    c4 = vf.ChordSymbol({vJustify:'top',fontFamily:'PetalumaScript,Arial'}).addText('C').addGlyphOrText('7(b9)', { symbolModifier: VF.ChordSymbol.symbolModifiers.SUPERSCRIPT });
       //.addGlyphSuperscript('dim'); // see https://github.com/0xfe/vexflow/issues/822    
     registry.getElementById("1").addModifier(0,c1);
     registry.getElementById("2").addModifier(0,c2);

@@ -1,3 +1,9 @@
+
+@font-face {
+  font-family: 'PetalumaScript';
+  src: local('PetalumaScript'), url(./fonts/PetalumaScript.otf) format('opentype');
+}
+
 .voice {
   display: flex;
   white-space: pre;
