@@ -1,13 +1,22 @@
 "use strict";
-const Vex = require('vexflow/releases/vexflow-min');
+const Vex = require('vexflow').default; // Remove .default when vexflow is updated : see https://github.com/0xfe/vexflow/issues/822
 const VexParser =  require("../parsers/vexflow_parser.js");
 const VF = Vex.Flow;
-
 function concat(a, b) { return a.concat(b); }
 
 function err(str) {
   throw new Vex.RERR('BadArgument', str);
 }
+
+const DEFAULT_FONT = 'Bravura';
+const FONT_STACKS = {
+  bravura: [VF.Fonts.Bravura, VF.Fonts.Gonville, VF.Fonts.Custom],
+  gonville: [VF.Fonts.Gonville, VF.Fonts.Bravura, VF.Fonts.Custom],
+  petaluma: [VF.Fonts.Petaluma, VF.Fonts.Gonville, VF.Fonts.Custom],
+  // Some aliases
+  jazz: [VF.Fonts.Petaluma, VF.Fonts.Gonville, VF.Fonts.Custom],
+  classic: [VF.Fonts.Bravura, VF.Fonts.Gonville, VF.Fonts.Custom]
+};
 
 function rendervexflow(str, opts) {
   // Parse the vexflow music notation
@@ -32,13 +41,13 @@ function rendervexflow(str, opts) {
   var vf = new VF.Factory(options);
   var score = vf.EasyScore({ throwOnError: true });
   
+  var font = parsed.options.font;
+  if (!font) font = DEFAULT_FONT;
+  VF.DEFAULT_FONT_STACK = FONT_STACKS[font.toLowerCase()];
+  if (!VF.DEFAULT_FONT_STACK) err("Invalid font : must be one of 'Bravura', 'Gonville' or 'Petaluma'.");
 
-  
-  /*Bravura: [VF.Fonts.Bravura, VF.Fonts.Gonville, VF.Fonts.Custom],
-  Gonville: [VF.Fonts.Gonville, VF.Fonts.Bravura, VF.Fonts.Custom],
-  Petaluma: [VF.Fonts.Petaluma, VF.Fonts.Gonville, VF.Fonts.Custom],
-*/
-  VF.DEFAULT_FONT_STACK = [VF.Fonts.Petaluma, VF.Fonts.Gonville, VF.Fonts.Custom];
+  var timeSignature = parsed.options.timeSignature
+  var keySignature = parsed.options.key
 
   var voice = score.voice.bind(score);
   var notes = score.notes.bind(score);
@@ -92,8 +101,10 @@ function rendervexflow(str, opts) {
 
       if (bar==0) {
         newStave.addClef(staff.options.clef);
-        newStave.addTimeSignature('4/4');
-        newStave.addKeySignature('Bb');
+        if (timeSignature)
+          newStave.addTimeSignature(timeSignature);
+        if (keySignature)
+          newStave.addKeySignature(keySignature);
         /* First staff only
         newStave.setTempo({ duration: 'q', dots: 0, bpm: 60}, -10);
         */
@@ -109,9 +120,31 @@ function rendervexflow(str, opts) {
 
     });
     if (bar==0) {
-      system.addConnector('brace');
+      if (parsed.staves.length>1)
+        system.addConnector('brace');
       system.addConnector('singleLeft');
     }
+
+    c1 = vf.ChordSymbol({vJustify:'top',fontFamily:'petalumaScript,Arial'}).addText('C').addTextSuperscript('7');
+    c2 = vf.ChordSymbol({vJustify:'top',fontFamily:'petalumaScript,Arial'}).addText('F').addTextSuperscript('7');
+    c3 = vf.ChordSymbol({vJustify:'top',fontFamily:'petalumaScript,Arial'}).addText('C').addTextSuperscript('7');
+    c4 = vf.ChordSymbol({vJustify:'top',fontFamily:'petalumaScript,Arial'}).addText('C').addGlyphOrText('7(b9)', { symbolModifier: VF.ChordSymbol.symbolModifiers.SUPERSCRIPT });
+      //.addGlyphSuperscript('dim'); // see https://github.com/0xfe/vexflow/issues/822    
+    registry.getElementById("1").addModifier(0,c1);
+    registry.getElementById("2").addModifier(0,c2);
+    registry.getElementById("3").addModifier(0,c3);
+    registry.getElementById("4").addModifier(0,c4); // CAN'T be reused
+
+/* */
+    // WORKS
+    //registry.getElementById("1").addModifier(0, vf.Fingering({ number: '1', position: 'left' }));
+    //registry.getElementById("1").addModifier(0,  vf.StringNumber({ number: '2', position: 'left' }).setOffsetY(-10));
+    //registry.getElementById("1").addModifier(0, new VF.Ornament('mordent'));
+    //var grace = vf.GraceNote({ keys: ['d/3'], clef: 'bass', duration: '8', slash: true });
+    //registry.getElementById("1").addModifier(0, vf.GraceNoteGroup({ notes: [grace] }));
+
+    // DOES NOT WORK
+    //registry.getElementById("1").addModifier(new vf.Vibrato(), 0);
     
   }
   system.addConnector('singleRight');
