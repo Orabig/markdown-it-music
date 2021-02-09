@@ -17,7 +17,7 @@ function parsebar(lines,opts,indent) {
     var def={blocs:[],options:opts};
     const re = new RegExp("^ {" + indent + "}(tuplet|beam|notes( *= *.*)?)(( +\\w+=\\w+)*)");
     while (lines.length>0) {
-        var parsed = parseOneLine(lines,re);
+        var parsed = parseOneLine(lines,re,indent);
         if (parsed.verb=='notes') {
             def.blocs.push(parseNotes(parsed.block,parsed.options,parsed.indent))
         }
@@ -29,7 +29,7 @@ function parseStaff(lines,opts,indent) {
     var def={bars:[],options:opts};
     const re = new RegExp("^ {" + indent + "}(bar|notes( *= *.*)?)(( +\\w+=\\w+)*)");
     while (lines.length>0) {
-        var parsed = parseOneLine(lines,re);
+        var parsed = parseOneLine(lines,re,indent);
         if (parsed.verb=='bar') {
             def.bars.push(parsebar(parsed.block,parsed.options,parsed.indent))
         }
@@ -46,7 +46,7 @@ function parseDefinition(lines, indent) {
     var def = {options:{},staves:[]};
     const re = new RegExp("^ {" + indent + "}(staff|options)(( +\\w+=\\S+)*)");
     while (lines.length>0) {
-        var parsed = parseOneLine(lines,re);
+        var parsed = parseOneLine(lines,re,indent);
         if (parsed.verb=='staff') {
             def.staves.push(parseStaff(parsed.block,parsed.options,parsed.indent))
         }
@@ -57,15 +57,17 @@ function parseDefinition(lines, indent) {
     return def;
 }
 
-function parseOneLine(lines,re) {
+function parseOneLine(lines,re,indent) {
     var firstLine = lines.shift();
     var match = re.exec(firstLine)
-    if (!match) throw "Unexected line : " + firstLine;
-    var newIndent = getIndentSize(lines);
-    var block = getLinesBelowIndent(lines,newIndent);
+    if (!match) return { error:"Unexected line : " + firstLine };
     var verb = match[1];
     var options = parseOptions(match[2]);
-    return {verb:verb, options:options, block:block,indent:newIndent};
+    var newIndent = getIndentSize(lines);
+    var block=[];
+    if (newIndent>indent)
+        block = getLinesBelowIndent(lines,newIndent);
+    return {verb:verb, options:options, block:block, indent:newIndent};
 }
 
 function getLinesBelowIndent(lines,indent) {
