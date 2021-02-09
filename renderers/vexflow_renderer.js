@@ -4,10 +4,6 @@ const VexParser =  require("../parsers/vexflow_parser.js");
 const VF = Vex.Flow;
 function concat(a, b) { return a.concat(b); }
 
-function err(str) {
-  throw new Vex.RERR('BadArgument', str);
-}
-
 const DEFAULT_FONT = 'Bravura';
 const FONT_STACKS = {
   bravura: [VF.Fonts.Bravura, VF.Fonts.Gonville, VF.Fonts.Custom],
@@ -19,17 +15,29 @@ const FONT_STACKS = {
 };
 
 function rendervexflow(str, opts) {
-  // Parse the vexflow music notation
+  try {
   var parsed = VexParser.parseVex(str);
-  if (str.includes("bach")) {
-    const svgContainer = document.createElement("div");
-    var systemWidth = 600;
-    var options = { renderer: {elementId: svgContainer, width: systemWidth+100, height: 900} }
-    bachSample(options);
-    return svgContainer.outerHTML;
+  } catch (error) {
+    return '<table border="1"><tr><td>' + error + '</td></tr></table>';
   }
+
+  function err(str) {
+    if (parsed.options.debug=="true") {
+      str += "<pre>" + JSON.stringify(parsed) + "</pre>";
+    }
+    return '<table border="1"><tr><td>' + str + '</td></tr></table>';
+  }
+
+  try{
+  // Parse the vexflow music notation
+  var systemWidth = 600;
   const div = document.createElement("div");
-  var systemWidth = 800;
+  if (str.includes("bach")) {
+    var options = { renderer: {elementId: div, width: systemWidth+100, height: 900} }
+    bachSample(options);
+    return div.outerHTML;
+  }
+
   var options = { renderer: {elementId: div, width: systemWidth+100, height: 220} }
   //var renderer = new VF.Renderer(div, VF.Renderer.Backends.SVG);
   //renderer.resize(systemWidth+100, 100);
@@ -44,7 +52,7 @@ function rendervexflow(str, opts) {
   var font = parsed.options.font;
   if (!font) font = DEFAULT_FONT;
   VF.DEFAULT_FONT_STACK = FONT_STACKS[font.toLowerCase()];
-  if (!VF.DEFAULT_FONT_STACK) err("Invalid font : must be one of 'Bravura', 'Gonville' or 'Petaluma'.");
+  if (!VF.DEFAULT_FONT_STACK) return err("Invalid font : must be one of 'Bravura', 'Gonville' or 'Petaluma'.");
 
   var timeSignature = parsed.options.timeSignature
   var keySignature = parsed.options.key
@@ -62,28 +70,49 @@ function rendervexflow(str, opts) {
     return system;
   }
   
-  if (parsed.staves.length==0) err("No staff defined.");
-  if (parsed.staves[0])
-  parsed.staves[0].options.clef='treble';
-  if (parsed.staves[1])
+  
+  if (parsed.staves.length==0) {
+    // err("No staff defined.");
+    return err("vexflow empty : there should be at least one staff defined.");
+  } else {
+  if (parsed.staves[0] && !parsed.staves[0].options.clef)
+    parsed.staves[0].options.clef='treble';
+  if (parsed.staves[1] && !parsed.staves[1].options.clef)
     parsed.staves[1].options.clef='bass';
   
   var beams = [];
   var automaticBeam = true;
 
-  // TODO : verifier qu'il y a le MEME nombre de bars par staff
   var barCount = parsed.staves[0].bars.length;
+  for (let i=0;i<parsed.staves.length;i++) {
+    if (!parsed.staves[i].bars || parsed.staves[i].length==0)
+      return err("All staves should contain at least one bar.");
+    if (parsed.staves[i].bars.length!=barCount)
+      return err("All staves should have the same number of bar")
+      if (!parsed.staves[i].bars[0])
+      return err("All bars should have notes")
+      if (!parsed.staves[i].bars[0].blocs || parsed.staves[i].bars[0].blocs.length==0)
+      return err("All bars should have notes")
+  }
+
+
   for(let bar=0; bar<barCount; bar++) {
     var barWidth = systemWidth / barCount;
+    if (parsed.staves[0].bars[bar].options.width)
+      barWidth = parseInt(parsed.staves[0].bars[bar].options.width);
+
     var system = makeSystem(barWidth);
-    parsed.staves.forEach(staff => {
+      parsed.staves.forEach(staff => {
       var clef = staff.options.clef;
       var voices = [
         voice(
           staff.bars[bar].blocs.map( bloc=> {
               if (bloc.type=='notes') {
                 var options = {clef: clef};
-                return notes(bloc.values, options);
+                return notes(bloc.values, options)/*.map( note => {
+                  note.setStyle({strokeStyle: "#0000"});
+                  return note;
+                });*/
               }
           }).reduce(concat)
         )
@@ -124,7 +153,7 @@ function rendervexflow(str, opts) {
         system.addConnector('brace');
       system.addConnector('singleLeft');
     }
-
+/*
     c1 = vf.ChordSymbol({vJustify:'top',fontFamily:'Roboto Slab,Times'}).addText('C').addTextSuperscript('7');
     c2 = vf.ChordSymbol({vJustify:'top',fontFamily:'PetalumaScript,Arial'}).addText('F').addTextSuperscript('7');
     c3 = vf.ChordSymbol({vJustify:'top',fontFamily:'PetalumaScript,Arial'}).addText('C').addTextSuperscript('7');
@@ -134,7 +163,7 @@ function rendervexflow(str, opts) {
     registry.getElementById("2").addModifier(0,c2);
     registry.getElementById("3").addModifier(0,c3);
     registry.getElementById("4").addModifier(0,c4); // CAN'T be reused
-
+*/
 /* */
     // WORKS
     //registry.getElementById("1").addModifier(0, vf.Fingering({ number: '1', position: 'left' }));
@@ -150,6 +179,7 @@ function rendervexflow(str, opts) {
   system.addConnector('singleRight');
   
   vf.draw();
+  }
 
   if (automaticBeam) {
     beams.forEach(function(beam) {
@@ -159,6 +189,9 @@ function rendervexflow(str, opts) {
 
   VF.Registry.disableDefaultRegistry();
   return div.outerHTML;
+  } catch (error) {
+    return err(error);
+  }
 }
 
 // Source : https://github.com/0xfe/vexflow/blob/master/tests/bach_tests.js
