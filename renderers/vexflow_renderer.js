@@ -147,11 +147,24 @@ function rendervexflow(str, opts) {
       .joinVoices(voices)
       .formatToStave(voices, newStave);*/
 
+      
+    if (parsed.staves[0].bars[bar].options.repeat=="end") {
+      newStave.setEndBarType(VF.Barline.type.REPEAT_END);
+    } else {
+      // ...
+    }
+
     });
     if (bar==0) {
       if (parsed.staves.length>1)
         system.addConnector('brace');
       system.addConnector('singleLeft');
+    }
+
+    if (parsed.staves[0].bars[bar].options.repeat=="end") {
+      system.addConnector('boldDoubleRight');
+    } else {
+      system.addConnector('singleRight');
     }
 /*
     c1 = vf.ChordSymbol({vJustify:'top',fontFamily:'Roboto Slab,Times'}).addText('C').addTextSuperscript('7');
