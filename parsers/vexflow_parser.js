@@ -10,7 +10,6 @@ function parsebar(lines,opts,indent) {
         var match = re.exec(firstLine);
         notes.values += match[1];
     }
-    console.log("bar:",opts);
     return {blocs: [notes], options:opts};
 }
 
