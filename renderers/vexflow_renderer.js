@@ -28,9 +28,29 @@ function rendervexflow(str, opts) {
     return '<table border="1"><tr><td>' + str + '</td></tr></table>';
   }
 
+  function getInt(opt, sources, def=0) {
+    for(i in sources) {
+      var source = sources[i];
+      if (source.options && source.options[opt]){
+        return parseInt(source.options[opt]);
+      }
+    }
+    return def;
+  }
+
+  function getBool(opt, sources, def=false) {
+    for(i in sources) {
+      var source = sources[i];
+      if (source.options && source.options[opt]){
+        return (source.options[opt]==="true");
+      }
+    }
+    return def;
+  }
+
   try{
   // Parse the vexflow music notation
-  var systemWidth = 600;
+  var systemWidth = getInt("width",[parsed],400);
   const div = document.createElement("div");
   if (str.includes("bach")) {
     var options = { renderer: {elementId: div, width: systemWidth+100, height: 900} }
@@ -39,9 +59,6 @@ function rendervexflow(str, opts) {
   }
 
   var options = { renderer: {elementId: div, width: systemWidth+100, height: 220} }
-  //var renderer = new VF.Renderer(div, VF.Renderer.Backends.SVG);
-  //renderer.resize(systemWidth+100, 100);
-  //var options = { renderer: renderer};
   var registry = new VF.Registry();
   function id(id) { return registry.getElementById(id); }
 
@@ -70,9 +87,7 @@ function rendervexflow(str, opts) {
     return system;
   }
   
-  
   if (parsed.staves.length==0) {
-    // err("No staff defined.");
     return err("vexflow empty : there should be at least one staff defined.");
   } else {
   if (parsed.staves[0] && !parsed.staves[0].options.clef)
@@ -95,24 +110,27 @@ function rendervexflow(str, opts) {
       return err("All bars should have notes")
   }
 
-
-  for(let bar=0; bar<barCount; bar++) {
-    var barWidth = systemWidth / barCount;
-    if (parsed.staves[0].bars[bar].options.width)
-      barWidth = parseInt(parsed.staves[0].bars[bar].options.width);
+  for(let barIdx=0; barIdx<barCount; barIdx++) {
+    var firstBar = parsed.staves[0].bars[barIdx];
+    var barWidth = getInt("width", [firstBar], systemWidth / barCount);
 
     var system = makeSystem(barWidth);
       parsed.staves.forEach(staff => {
       var clef = staff.options.clef;
       var voices = [
         voice(
-          staff.bars[bar].blocs.map( bloc=> {
+          staff.bars[barIdx].blocs.map( bloc=> {
               if (bloc.type=='notes') {
                 var options = {clef: clef};
-                return notes(bloc.values, options)/*.map( note => {
-                  note.setStyle({strokeStyle: "#0000"});
-                  return note;
-                });*/
+                var bloc = notes(bloc.values, options);
+                var nosteam = getBool("nostem",[parsed, staff, firstBar]);
+                if (nosteam) {
+                  bloc = bloc.map( note => {
+                    note.setStyle({strokeStyle: "#0000"});
+                    return note;
+                  });
+                }
+                return bloc;
               }
           }).reduce(concat)
         )
@@ -128,40 +146,29 @@ function rendervexflow(str, opts) {
         voices: voices,
       });
 
-      if (bar==0) {
+      if (barIdx==0) {
         newStave.addClef(staff.options.clef);
         if (timeSignature)
           newStave.addTimeSignature(timeSignature);
         if (keySignature)
           newStave.addKeySignature(keySignature);
-        /* First staff only
-        newStave.setTempo({ duration: 'q', dots: 0, bpm: 60}, -10);
-        */
       }
-      /*      .addClef('treble')
-        .addKeySignature('G')
-        .addTimeSignature('3/4')
-        .setTempo({ name: 'Allegretto', duration: 'h', dots: 1, bpm: 66}, -30);*/
-      /*
-      vf.Formatter()
-      .joinVoices(voices)
-      .formatToStave(voices, newStave);*/
 
       
-    if (parsed.staves[0].bars[bar].options.repeat=="end") {
+    if (firstBar.options.repeat=="end") {
       newStave.setEndBarType(VF.Barline.type.REPEAT_END);
     } else {
       // ...
     }
 
     });
-    if (bar==0) {
+    if (barIdx==0) {
       if (parsed.staves.length>1)
         system.addConnector('brace');
       system.addConnector('singleLeft');
     }
 
-    if (parsed.staves[0].bars[bar].options.repeat=="end") {
+    if (firstBar.options.repeat=="end") {
       system.addConnector('boldDoubleRight');
     } else {
       system.addConnector('singleRight');
@@ -190,7 +197,8 @@ function rendervexflow(str, opts) {
     
   }
   system.addConnector('singleRight');
-  
+  if (parsed.options.scale)
+    vf.getContext().scale(parseFloat(parsed.options.scale),parseFloat(parsed.options.scale));
   vf.draw();
   }
 
