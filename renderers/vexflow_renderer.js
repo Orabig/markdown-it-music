@@ -29,7 +29,7 @@ function rendervexflow(str, opts) {
   }
 
   function getInt(opt, sources, def=0) {
-    for(si in sources) {
+    for(var si=0; si<sources.length; si++) {
       var source = sources[si];
       if (source.options && source.options[opt]){
         return parseInt(source.options[opt]);
@@ -39,7 +39,7 @@ function rendervexflow(str, opts) {
   }
 
   function getBool(opt, sources, def=false) {
-    for(si in sources) {
+    for(var si=0; si<sources.length; si++) {
       var source = sources[si];
       if (source.options && source.options[opt]){
         return (source.options[opt]==="true");
