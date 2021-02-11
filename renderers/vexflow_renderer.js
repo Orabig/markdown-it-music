@@ -29,8 +29,8 @@ function rendervexflow(str, opts) {
   }
 
   function getInt(opt, sources, def=0) {
-    for(i in sources) {
-      var source = sources[i];
+    for(si in sources) {
+      var source = sources[si];
       if (source.options && source.options[opt]){
         return parseInt(source.options[opt]);
       }
@@ -39,8 +39,8 @@ function rendervexflow(str, opts) {
   }
 
   function getBool(opt, sources, def=false) {
-    for(i in sources) {
-      var source = sources[i];
+    for(si in sources) {
+      var source = sources[si];
       if (source.options && source.options[opt]){
         return (source.options[opt]==="true");
       }
@@ -99,14 +99,14 @@ function rendervexflow(str, opts) {
   var automaticBeam = true;
 
   var barCount = parsed.staves[0].bars.length;
-  for (let i=0;i<parsed.staves.length;i++) {
-    if (!parsed.staves[i].bars || parsed.staves[i].length==0)
+  for (let sidx=0;sidx<parsed.staves.length;sidx++) {
+    if (!parsed.staves[sidx].bars || parsed.staves[sidx].length==0)
       return err("All staves should contain at least one bar.");
-    if (parsed.staves[i].bars.length!=barCount)
+    if (parsed.staves[sidx].bars.length!=barCount)
       return err("All staves should have the same number of bar")
-      if (!parsed.staves[i].bars[0])
+      if (!parsed.staves[sidx].bars[0])
       return err("All bars should have notes")
-      if (!parsed.staves[i].bars[0].blocs || parsed.staves[i].bars[0].blocs.length==0)
+      if (!parsed.staves[sidx].bars[0].blocs || parsed.staves[sidx].bars[0].blocs.length==0)
       return err("All bars should have notes")
   }
 
@@ -211,6 +211,8 @@ function rendervexflow(str, opts) {
   VF.Registry.disableDefaultRegistry();
   return div.outerHTML;
   } catch (error) {
+    if (getBool("error",[parsed],false))
+      throw error;
     return err(error);
   }
 }
