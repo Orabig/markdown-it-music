@@ -84,8 +84,14 @@ function rendervexflow(str, opts) {
   var beam = score.beam.bind(score);
   var tuplet = score.tuplet.bind(score);
 
-  var x = 20; // Place pour l'accolade ?
+  var x = 14;
   var y = 0;
+
+  /**
+   * Extends the existing system with a new bar. Returns a new empty system of the given width
+   * and increments the x coordinate.
+   * @param {int} width 
+   */
   function makeSystem(width) {
     var system = vf.System({ x: x, y: y, width: width, spaceBetweenStaves: 10 });
     x += width;
@@ -94,7 +100,9 @@ function rendervexflow(str, opts) {
   
   if (parsed.staves.length==0) {
     return err("vexflow empty : there should be at least one staff defined.");
-  } else {
+  }
+
+  // By default, top staff is treble (G clef) and bottom is bass (F clef)
   if (parsed.staves[0] && !parsed.staves[0].options.clef)
     parsed.staves[0].options.clef='treble';
   if (parsed.staves[1] && !parsed.staves[1].options.clef)
@@ -116,8 +124,8 @@ function rendervexflow(str, opts) {
   }
 
   for(let barIdx=0; barIdx<barCount; barIdx++) {
-    var firstBar = parsed.staves[0].bars[barIdx];
-    var barWidth = getInt("width", [firstBar], systemWidth / barCount);
+    var barOnFirstStaff = parsed.staves[0].bars[barIdx];
+    var barWidth = getInt("width", [barOnFirstStaff], systemWidth / barCount);
 
     var system = makeSystem(barWidth);
       parsed.staves.forEach(staff => {
@@ -128,21 +136,17 @@ function rendervexflow(str, opts) {
               if (bloc.type=='notes') {
                 var options = {clef: clef};
                 var bloc = notes(bloc.values, options);
-                var nosteam = getBool("nostem",[parsed, staff, firstBar]);
-                if (nosteam) {
-                  bloc = bloc.map( note => {
-                    note.setStyle({strokeStyle: "#0000"});
-                    return note;
-                  });
-                }
+                var nosteam = getBool("nostem",[parsed, staff, barOnFirstStaff]);
+                if (nosteam)
+                  bloc.forEach( note => note.setStyle({strokeStyle: "#0000"}) );
                 return bloc;
               }
           }).reduce(concat)
         )
       ].map(voice => { // Map voices to plugin generateBeams
         if (automaticBeam) {
-          var be = VF.Beam.generateBeams(voice.getTickables(), {});
-          beams = beams.concat(be);
+          var voiceBeams = VF.Beam.generateBeams(voice.getTickables(), {});
+          beams = beams.concat(voiceBeams);
         }
         return voice;
       });
@@ -160,20 +164,21 @@ function rendervexflow(str, opts) {
       }
 
       
-    if (firstBar.options.repeat=="end") {
+    if (barOnFirstStaff.options.repeat=="end") {
       newStave.setEndBarType(VF.Barline.type.REPEAT_END);
     } else {
       // ...
     }
 
     });
+
     if (barIdx==0) {
       if (parsed.staves.length>1)
         system.addConnector('brace');
       system.addConnector('singleLeft');
     }
 
-    if (firstBar.options.repeat=="end") {
+    if (barOnFirstStaff.options.repeat=="end") {
       system.addConnector('boldDoubleRight');
     } else {
       system.addConnector('singleRight');
@@ -199,8 +204,7 @@ function rendervexflow(str, opts) {
 
     // DOES NOT WORK
     //registry.getElementById("1").addModifier(new vf.Vibrato(), 0);
-    
-  }
+   
   system.addConnector('singleRight');
   if (parsed.options.scale)
     vf.getContext().scale(parseFloat(parsed.options.scale),parseFloat(parsed.options.scale));
