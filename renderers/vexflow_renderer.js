@@ -66,6 +66,7 @@ function rendervexflow(str, opts) {
   var vf = new VF.Factory(options);
   var score = vf.EasyScore({ throwOnError: true });
   
+
   var font = parsed.options.font;
   if (!font) font = DEFAULT_FONT;
   VF.DEFAULT_FONT_STACK = FONT_STACKS[font.toLowerCase()];
@@ -73,6 +74,10 @@ function rendervexflow(str, opts) {
 
   var timeSignature = parsed.options.timeSignature
   var keySignature = parsed.options.key
+
+  if (timeSignature) {
+    score.set({ time: timeSignature });
+  }
 
   var voice = score.voice.bind(score);
   var notes = score.notes.bind(score);
