@@ -14,6 +14,26 @@ const FONT_STACKS = {
   classic: [VF.Fonts.Bravura, VF.Fonts.Gonville, VF.Fonts.Custom]
 };
 
+function getInt(opt, sources, def=0) {
+  for(var si=0; si<sources.length; si++) {
+    var source = sources[si];
+    if (source.options && source.options[opt]){
+      return parseInt(source.options[opt]);
+    }
+  }
+  return def;
+}
+
+function getBool(opt, sources, def=false) {
+  for(var si=0; si<sources.length; si++) {
+    var source = sources[si];
+    if (source.options && source.options[opt]){
+      return (source.options[opt]==="true");
+    }
+  }
+  return def;
+}
+
 function rendervexflow(str, opts) {
   try {
   var parsed = VexParser.parseVex(str);
@@ -28,32 +48,12 @@ function rendervexflow(str, opts) {
     return '<table border="1"><tr><td>' + str + '</td></tr></table>';
   }
 
-  function getInt(opt, sources, def=0) {
-    for(var si=0; si<sources.length; si++) {
-      var source = sources[si];
-      if (source.options && source.options[opt]){
-        return parseInt(source.options[opt]);
-      }
-    }
-    return def;
-  }
-
-  function getBool(opt, sources, def=false) {
-    for(var si=0; si<sources.length; si++) {
-      var source = sources[si];
-      if (source.options && source.options[opt]){
-        return (source.options[opt]==="true");
-      }
-    }
-    return def;
-  }
-
   try{
   // Parse the vexflow music notation
   var systemWidth = getInt("width",[parsed],400);
   const div = document.createElement("div");
   if (str.includes("bach")) {
-    var options = { renderer: {elementId: div, width: systemWidth+100, height: 900} }
+    var options = { renderer: {elementId: div, width: 900, height: 900} }
     bachSample(options);
     return div.outerHTML;
   }
@@ -66,6 +66,10 @@ function rendervexflow(str, opts) {
   var vf = new VF.Factory(options);
   var score = vf.EasyScore({ throwOnError: true });
   
+  
+  if (parsed.staves.length==0) {
+    return err("vexflow empty : there should be at least one staff defined.");
+  }
 
   var font = parsed.options.font;
   if (!font) font = DEFAULT_FONT;
@@ -84,8 +88,29 @@ function rendervexflow(str, opts) {
   var beam = score.beam.bind(score);
   var tuplet = score.tuplet.bind(score);
 
+  /**
+   * Generates a block of notes from parsed definition
+   * @param {*} bloc 
+   * @param {*} staff 
+   * @param {*} barOnFirstStaff 
+   */
+  function generateFromDefinition(bloc, staff, barOnFirstStaff) {
+    var clef = staff.options.clef;
+    if (bloc.type=='notes') {
+      var options = {clef: clef};
+      var bloc = notes(bloc.values, options);
+      var nostem = getBool("nostem",[parsed, staff, barOnFirstStaff]);
+      if (nostem)
+        bloc.forEach( note => note.setStyle({strokeStyle: "#0000"}) );
+      return bloc;
+    }
+    throw "Not implemented block type : '%s'" % bloc.type;
+  }
+
   var x = 14;
   var y = 0;
+  var beams = [];
+  var automaticBeam = true;
 
   /**
    * Extends the existing system with a new bar. Returns a new empty system of the given width
@@ -97,9 +122,44 @@ function rendervexflow(str, opts) {
     x += width;
     return system;
   }
-  
-  if (parsed.staves.length==0) {
-    return err("vexflow empty : there should be at least one staff defined.");
+
+  /**
+   * 
+   * @param {*} staff 
+   * @param {*} barIdx 
+   * @param {*} barOnFirstStaff 
+   */
+  function AddNewStaffToSystem(system,staff,barIdx,barOnFirstStaff) {
+    var voices = [
+      voice(
+        staff.bars[barIdx].blocs.map( bloc=> generateFromDefinition(bloc, staff, barOnFirstStaff)).reduce(concat)
+      )
+    ];
+    
+    if (automaticBeam) {
+      voices.forEach(voice => {
+        var voiceBeams = VF.Beam.generateBeams(voice.getTickables(), {});
+        beams = beams.concat(voiceBeams);
+      });
+    }
+
+    var newStave = system.addStave({
+      voices: voices,
+    });
+
+    if (barIdx==0) {
+      newStave.addClef(staff.options.clef);
+      if (timeSignature)
+        newStave.addTimeSignature(timeSignature);
+      if (keySignature)
+        newStave.addKeySignature(keySignature);
+    }
+
+    if (barOnFirstStaff.options.repeat=="end") {
+      newStave.setEndBarType(VF.Barline.type.REPEAT_END);
+    } else {
+      // ...
+    }
   }
 
   // By default, top staff is treble (G clef) and bottom is bass (F clef)
@@ -108,8 +168,6 @@ function rendervexflow(str, opts) {
   if (parsed.staves[1] && !parsed.staves[1].options.clef)
     parsed.staves[1].options.clef='bass';
   
-  var beams = [];
-  var automaticBeam = true;
 
   var barCount = parsed.staves[0].bars.length;
   for (let sidx=0;sidx<parsed.staves.length;sidx++) {
@@ -125,52 +183,11 @@ function rendervexflow(str, opts) {
 
   for(let barIdx=0; barIdx<barCount; barIdx++) {
     var barOnFirstStaff = parsed.staves[0].bars[barIdx];
+
     var barWidth = getInt("width", [barOnFirstStaff], systemWidth / barCount);
-
     var system = makeSystem(barWidth);
-      parsed.staves.forEach(staff => {
-      var clef = staff.options.clef;
-      var voices = [
-        voice(
-          staff.bars[barIdx].blocs.map( bloc=> {
-              if (bloc.type=='notes') {
-                var options = {clef: clef};
-                var bloc = notes(bloc.values, options);
-                var nosteam = getBool("nostem",[parsed, staff, barOnFirstStaff]);
-                if (nosteam)
-                  bloc.forEach( note => note.setStyle({strokeStyle: "#0000"}) );
-                return bloc;
-              }
-          }).reduce(concat)
-        )
-      ].map(voice => { // Map voices to plugin generateBeams
-        if (automaticBeam) {
-          var voiceBeams = VF.Beam.generateBeams(voice.getTickables(), {});
-          beams = beams.concat(voiceBeams);
-        }
-        return voice;
-      });
 
-      var newStave = system.addStave({
-        voices: voices,
-      });
-
-      if (barIdx==0) {
-        newStave.addClef(staff.options.clef);
-        if (timeSignature)
-          newStave.addTimeSignature(timeSignature);
-        if (keySignature)
-          newStave.addKeySignature(keySignature);
-      }
-
-      
-    if (barOnFirstStaff.options.repeat=="end") {
-      newStave.setEndBarType(VF.Barline.type.REPEAT_END);
-    } else {
-      // ...
-    }
-
-    });
+    parsed.staves.forEach(staff => AddNewStaffToSystem(system,staff,barIdx,barOnFirstStaff));
 
     if (barIdx==0) {
       if (parsed.staves.length>1)
@@ -226,6 +243,7 @@ function rendervexflow(str, opts) {
   }
 }
 
+// I keep this sample code as a reminder for missing features.
 // Source : https://github.com/0xfe/vexflow/blob/master/tests/bach_tests.js
 // Image : https://github.com/0xfe/vexflow/issues/471
 function bachSample(options) {
@@ -290,6 +308,8 @@ function bachSample(options) {
     to: id('m2a'),
     options: { cps: [{ x: 0, y: 40 }, { x: 0, y: 40 }] },
   });
+
+  vf.StaveTie({ from: id('m2b'), to: id('m2c') });
 
   /*  Measure 3 */
   system = makeSystem(150);
@@ -390,22 +410,20 @@ function bachSample(options) {
 
   /*  Measure 8 */
   system = makeSystem(180);
-  var grace = vf.GraceNote({ keys: ['d/3'], clef: 'bass', duration: '8', slash: true });
-
+//  var grace = vf.GraceNote({ keys: ['d/3'], clef: 'bass', duration: '8', slash: true });
+  
   system.addStave({ voices: [voice(notes('A4/h.[id="m8c"]'))] });
   system.addStave({
     voices: [
       score.set({ clef: 'bass' }).voice([
         notes('D4/q[id="m8a"]'),
-        beam(notes('D3/8, C4, B3[id="m8b"], A3', { stem: 'down' })),
+        beam(notes('D3/8, C4, B3, A3', { stem: 'down' })),
       ].reduce(concat)),
     ],
   });
   system.addConnector('singleRight');
 
-  id('m8b').addModifier(0, vf.Fingering({ number: '1', position: 'above' }));
-  id('m8c').addModifier(0, vf.GraceNoteGroup({ notes: [grace] }));
-
+  // End of curve from measure 7
   vf.Curve({
     from: id('m7a'),
     to: id('m8c'),
@@ -417,6 +435,9 @@ function bachSample(options) {
     },
   });
 
+  // Grace note
+  var grace = vf.GraceNote({ keys: ['b/4'], clef: 'treble', duration: '8', slash: true});
+   id('m8c').addModifier(0, vf.GraceNoteGroup({ notes: [grace] }));
   vf.StaveTie({ from: grace, to: id('m8c') });
 
   /*  Measure 9 */
