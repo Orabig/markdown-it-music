@@ -2,15 +2,46 @@
 const barPattern = /^([a-zA-Z-_]+)([0-9]*):\s(.*)/;
 const emptyLine = /^[ \t]*\n?$/;
 
-function parsebar(lines,opts,indent) {
-    var notes={type:'notes',values:''};
+/**
+ * parse a full bloc, extracts the easynotes définition and the modificators
+ * 
+ * "A4,B4{c:EM}_C4-D4" -> {type:"notes",values:"A4,B4,C4,D4",mods:{chords:[{val:"EM",idx:1}],links:[{from:1,to:2,high:false},{from:2,to:3,high:true}]}}
+ * @param {*} definition 
+ */
+function parseBlocDefinition(definition) {
+    // First of all, removes all spaces
+    definition = definition.replace(/ /g,'');
+    const comma_or_link = new RegExp("([,_-])");
+    var parts = definition.split(comma_or_link);
+
+    var notes = []
+    for(var i=0;i<parts.length;i+=2) {
+        notes = notes.concat(parts[i]);
+    }
+    definition = notes.join(',');
+
+    var links = []
+    for(var i=1;i<parts.length;i+=2) {
+        if (parts[i] != ',') {
+            var idx = (i-1)/2;
+            var high = parts[i]=='-';
+            links = links.concat({from:idx, to:idx+1, high:high});
+        }
+    }
+    definition = notes.join(',');
+
+    return [ {type:'notes',values:definition, mods:{links:links}} ];
+}
+
+function parseBar(lines,opts,indent) {
+    var definition='';
     const re = new RegExp("^ {" + indent + "}(.*)");
     while (lines.length>0) {
         var firstLine = lines.shift();
         var match = re.exec(firstLine);
-        notes.values += match[1];
+        definition += match[1];
     }
-    return {blocs: [notes], options:opts};
+    return {blocs: parseBlocDefinition(definition), options:opts};
 }
 
 function parseStaff(lines,opts,indent) {
@@ -19,7 +50,7 @@ function parseStaff(lines,opts,indent) {
     while (lines.length>0) {
         var parsed = parseOneLine(lines,re,indent);
         if (parsed.verb=='bar') {
-            def.bars.push(parsebar(parsed.block,parsed.options,parsed.indent))
+            def.bars.push(parseBar(parsed.block,parsed.options,parsed.indent))
         }
     }
     return def;

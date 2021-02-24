@@ -90,21 +90,43 @@ function rendervexflow(str, opts) {
 
   /**
    * Generates a block of notes from parsed definition
-   * @param {*} bloc 
+   * @param {*} definition 
    * @param {*} staff 
    * @param {*} barOnFirstStaff 
    */
-  function generateFromDefinition(bloc, staff, barOnFirstStaff) {
+  function generateFromDefinition(definition, staff, barOnFirstStaff) {
     var clef = staff.options.clef;
-    if (bloc.type=='notes') {
+    if (definition.type=='notes') {
       var options = {clef: clef};
-      var bloc = notes(bloc.values, options);
+      var mods = definition.mods;
+      var blockOfNotes = notes(definition.values, options);
       var nostem = getBool("nostem",[parsed, staff, barOnFirstStaff]);
+      // Hide stem if needed
       if (nostem)
-        bloc.forEach( note => note.setStyle({strokeStyle: "#0000"}) );
-      return bloc;
+        blockOfNotes.forEach( note => note.setStyle({strokeStyle: "#0000"}) );
+      // Add links if any
+      mods.links.forEach(link => {
+        // "high" links goes down (and "bottom" goes up)
+        var options = { direction: link.high ? VF.Stem.DOWN : VF.Stem.UP };
+        vf.StaveTie({
+          from: blockOfNotes[link.from],
+          to: blockOfNotes[link.to],
+          first_indices: [0],
+          last_indices: [0],
+          options: options
+        });
+      });
+      // Add chords aboves notes if any
+      /*
+      blockOfNotes.forEach( note => {
+          var chord1 = new VF.ChordSymbol().addText('F7').setHorizontal('left')
+            .addGlyphOrText('#11', { symbolModifier: VF.ChordSymbol.symbolModifiers.SUPERSCRIPT })
+            .addGlyphOrText('b9', { symbolModifier: VF.ChordSymbol.symbolModifiers.SUBSCRIPT });
+          note.addModifier(0, chord1);
+        } );*/
+      return blockOfNotes;
     }
-    throw "Not implemented block type : '%s'" % bloc.type;
+    throw "Not implemented block type : '%s'" % definition.type;
   }
 
   var x = 14;
@@ -130,12 +152,27 @@ function rendervexflow(str, opts) {
    * @param {*} barOnFirstStaff 
    */
   function AddNewStaffToSystem(system,staff,barIdx,barOnFirstStaff) {
+/** 
+      var voice2 = score.voice([
+        vf.TextNote({ text: 'D' + VF.unicode.sharp + '/F',  duration: 'q', superscript: 'sus2' }),
+        vf.TextNote({ text: 'C'+VF.unicode.triangle + '7', subscript: '', duration: 'q' }),
+        vf.TextNote({ text: 'G'+ VF.unicode['o-with-slash'] + '7', duration: 'q' }),
+      ]);
+      voice2.getTickables().forEach(function(note) {
+        note.font = { family: 'Serif', size: 15, weight: '' };
+        note.setLine(1);
+        note.setJustification(VF.TextNote.Justification.LEFT);
+        note.width=100;
+      });
+*/
+    var oneVoice = voice(
+      staff.bars[barIdx].blocs.map( bloc=> generateFromDefinition(bloc, staff, barOnFirstStaff)).reduce(concat)
+    );
+
     var voices = [
-      voice(
-        staff.bars[barIdx].blocs.map( bloc=> generateFromDefinition(bloc, staff, barOnFirstStaff)).reduce(concat)
-      )
+      oneVoice
     ];
-    
+
     if (automaticBeam) {
       voices.forEach(voice => {
         var voiceBeams = VF.Beam.generateBeams(voice.getTickables(), {});
@@ -144,7 +181,7 @@ function rendervexflow(str, opts) {
     }
 
     var newStave = system.addStave({
-      voices: voices,
+      voices: voices
     });
 
     if (barIdx==0) {
@@ -160,7 +197,8 @@ function rendervexflow(str, opts) {
     } else {
       // ...
     }
-  }
+
+  } // function AddNewStaffToSystem
 
   // By default, top staff is treble (G clef) and bottom is bass (F clef)
   if (parsed.staves[0] && !parsed.staves[0].options.clef)
@@ -175,9 +213,9 @@ function rendervexflow(str, opts) {
       return err("All staves should contain at least one bar.");
     if (parsed.staves[sidx].bars.length!=barCount)
       return err("All staves should have the same number of bar")
-      if (!parsed.staves[sidx].bars[0])
-      return err("All bars should have notes")
-      if (!parsed.staves[sidx].bars[0].blocs || parsed.staves[sidx].bars[0].blocs.length==0)
+      if (!parsed.staves[sidx].bars[0]
+          || !parsed.staves[sidx].bars[0].blocs
+          || parsed.staves[sidx].bars[0].blocs.length==0)
       return err("All bars should have notes")
   }
 
@@ -200,9 +238,10 @@ function rendervexflow(str, opts) {
     } else {
       system.addConnector('singleRight');
     }
+    
 /*
     c1 = vf.ChordSymbol({vJustify:'top',fontFamily:'Roboto Slab,Times'}).addText('C').addTextSuperscript('7');
-    c2 = vf.ChordSymbol({vJustify:'top',fontFamily:'PetalumaScript,Arial'}).addText('F').addTextSuperscript('7');
+    c2 = vf.ChordSymbol({vJustify:'top',fontFamily:'PetalumaScript,Arial'}).addText('F').addTextSuperscript(VF.unicode.triangle + '7');
     c3 = vf.ChordSymbol({vJustify:'top',fontFamily:'PetalumaScript,Arial'}).addText('C').addTextSuperscript('7');
     c4 = vf.ChordSymbol({vJustify:'top',fontFamily:'PetalumaScript,Arial'}).addText('C').addGlyphOrText('7(b9)', { symbolModifier: VF.ChordSymbol.symbolModifiers.SUPERSCRIPT });
       //.addGlyphSuperscript('dim'); // see https://github.com/0xfe/vexflow/issues/822    
@@ -238,7 +277,7 @@ function rendervexflow(str, opts) {
   return div.outerHTML;
   } catch (error) {
     if (getBool("error",[parsed],false))
-      throw error;
+      console.log(error.stack);
     return err(error);
   }
 }
@@ -584,7 +623,7 @@ function bachSample(options) {
     ],
   }).setEndBarType(VF.Barline.type.REPEAT_END);
 
-  system.addStave({ voices: [voice(notes('g3/h[id="m16b"], g2/q', { clef: 'bass' }))] })
+  system.addStave({ voices: [voice(notes('g3/h.[id="m16b"]', { clef: 'bass' }))] })
     .setEndBarType(VF.Barline.type.REPEAT_END);
   system.addConnector('boldDoubleRight');
 
