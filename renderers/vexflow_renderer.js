@@ -117,6 +117,20 @@ function rendervexflow(str, opts) {
         });
       });
       // Add chords aboves notes if any
+      mods.chords.forEach(chord => {
+        var symbol = new VF.ChordSymbol().addText(chord.value).setHorizontal('center').setFontSize(16);
+        
+        // symbol.addGlyphSuperscript('dim');
+        if (chord.super) {
+          symbol.addGlyphOrText(chord.super, { symbolModifier: VF.ChordSymbol.symbolModifiers.SUPERSCRIPT });
+        }
+        if (chord.sub) {
+          symbol.addGlyphOrText(chord.sub, { symbolModifier: VF.ChordSymbol.symbolModifiers.SUBSCRIPT });
+        }
+        
+        var note = blockOfNotes[chord.idx];
+        note.addModifier(0, symbol);
+      });
       /*
       blockOfNotes.forEach( note => {
           var chord1 = new VF.ChordSymbol().addText('F7').setHorizontal('left')

@@ -15,22 +15,48 @@ function parseBlocDefinition(definition) {
     var parts = definition.split(comma_or_link);
 
     var notes = []
+    var chords = []
+    var idx=0;
+    const note_option = new RegExp("{(.*?)}");
+    const chord_subs = new RegExp('([/\\\\])(/?[^/\\\\]+)$');
     for(var i=0;i<parts.length;i+=2) {
-        notes = notes.concat(parts[i]);
+        var note = parts[i];
+        while (var m = note.match(note_option)) {
+            var value=m[1];
+            var chord = {idx:idx};
+            while (subs = value.match(chord_subs)) {
+                var sub_type = subs[1];
+                var sub = subs[2];
+                if (sub_type=='/') {
+                    chord.sub = sub;
+                } else {
+                    chord.super = sub;
+                }
+                value = value.replace(chord_subs,'');
+            }
+            chord.value = value;
+            chords = chords.concat(chord);
+            note = note.replace(note_option,'');
+        }
+        // Remove everything after { to avoid error messages while typing
+        note = note.replace(/{.*/,'');
+        notes = notes.concat(note);
+        idx++;
     }
     definition = notes.join(',');
 
     var links = []
+    idx=0;
     for(var i=1;i<parts.length;i+=2) {
         if (parts[i] != ',') {
-            var idx = (i-1)/2;
             var high = parts[i]=='-';
             links = links.concat({from:idx, to:idx+1, high:high});
         }
+        idx++;
     }
     definition = notes.join(',');
 
-    return [ {type:'notes',values:definition, mods:{links:links}} ];
+    return [ {type:'notes',values:definition, mods:{links:links,chords:chords}} ];
 }
 
 function parseBar(lines,opts,indent) {
