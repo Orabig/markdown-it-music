@@ -21,7 +21,8 @@ function parseBlocDefinition(definition) {
     const chord_subs = new RegExp('([/\\\\])(/?[^/\\\\]+)$');
     for(var i=0;i<parts.length;i+=2) {
         var note = parts[i];
-        while (var m = note.match(note_option)) {
+        var m;
+        while (m = note.match(note_option)) {
             var value=m[1];
             var chord = {idx:idx};
             while (subs = value.match(chord_subs)) {
