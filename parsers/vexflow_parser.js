@@ -25,6 +25,7 @@ function parseBlocDefinition(definition) {
         while (m = note.match(note_option)) {
             var value=m[1];
             var chord = {idx:idx};
+            var subs;
             while (subs = value.match(chord_subs)) {
                 var sub_type = subs[1];
                 var sub = subs[2];
