@@ -118,7 +118,8 @@ function rendervexflow(str, opts) {
       });
       // Add chords aboves notes if any
       mods.chords.forEach(chord => {
-        var symbol = new VF.ChordSymbol().addText(chord.value).setHorizontal('center').setFontSize(16);
+        var symbol = new VF.ChordSymbol();
+        symbol.addText(chord.value).setHorizontal('center').setFontSize(16);
         
         // symbol.addGlyphSuperscript('dim');
         if (chord.super) {
